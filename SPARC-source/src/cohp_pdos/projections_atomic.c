@@ -447,7 +447,7 @@ void CalculateAtomicOrbitals(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
 
     t_tot = t_old = 0.0;
 #ifdef DEBUG
-    if (rank == 0) printf("Calculate nonlocal projectors ... \n");
+    if (rank == 0) printf("Calculate GetInfluencingAtoms_AtomicOrbitals ... \n");
 #endif    
     int l, n_ao, np, lcount, lcount2, m, psd_len, col_count, indx, ityp, iat, ipos, ndc, lloc, lmax, DMnx, DMny;
     int i_DM, j_DM, k_DM;
@@ -1885,7 +1885,7 @@ void AO_psi_mult_kpt(const SPARC_OBJ *pSPARC, int DMnd, ATOM_NLOC_INFLUENCE_OBJ 
 
     FILE *fp;
     int count3;
-    MPI_Comm_rank(comm, &rank_comm);
+    // MPI_Comm_rank(comm, &rank_comm);
     char fname[] = "Projections";
     char result[1000];
 
