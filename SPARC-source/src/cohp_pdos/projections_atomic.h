@@ -10,18 +10,7 @@
 
 #include "isddft.h"
 #include <stdbool.h>
-// Structure to store elements of the hash table
-typedef struct HashNode {
-    int key;
-    int index;
-    struct HashNode *next;
-} HashNode;
 
-int hash_function(int key);
-
-void hash_insert(HashNode **hash_table, int key, int index);
-bool hash_search(HashNode **hash_table, int key, int *index);
-void free_hash_table(HashNode **hash_table);
 
 void GetInfluencingAtoms_AtomicOrbitals(SPARC_OBJ *pSPARC, ATOM_NLOC_INFLUENCE_OBJ *Atom_Influence_AO, int *DMVertices, MPI_Comm comm);
 
@@ -41,7 +30,6 @@ void Calculate_Overlap_AO_kpt(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
 
 void get_common_idx(int *x, int *y, int nx, int ny, int *n_common, int *nx_common, int *ny_common);
 
-int ifpresent(int count, int *grid_pos, int ndc2);
 
 void CalculateAOInnerProductIndex(SPARC_OBJ *pSPARC);
 

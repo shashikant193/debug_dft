@@ -134,7 +134,7 @@ void GetInfluencingAtoms_AtomicOrbitals(SPARC_OBJ *pSPARC, ATOM_NLOC_INFLUENCE_O
         // for (i = 0; i <= pSPARC->psd[ityp].lmax; i++) {
         //     rc = max(rc, pSPARC->psd[ityp].rc[i]);
         // }
-        rc = min(20.0, (pSPARC->AO_rad_str).r_grid[ityp][ (pSPARC->AO_rad_str).N_rgrid[ityp]-1]);  // 10 Bohr is the cutoff for the atomic orbitals
+        rc = min(10.0, (pSPARC->AO_rad_str).r_grid[ityp][ (pSPARC->AO_rad_str).N_rgrid[ityp]-1]);  // 10 Bohr is the cutoff for the atomic orbitals
 
 
         rc2 = rc * rc;
@@ -142,17 +142,6 @@ void GetInfluencingAtoms_AtomicOrbitals(SPARC_OBJ *pSPARC, ATOM_NLOC_INFLUENCE_O
         if(pSPARC->cell_typ == 0) {
             rcbox_x = rcbox_y = rcbox_z = rc;            
         } else {
-            // TODO: make an appropriate box in initialization 
-            // rcbox_x = pSPARC->CUTOFF_x[ityp];
-            // rcbox_y = pSPARC->CUTOFF_y[ityp];
-            // rcbox_z = pSPARC->CUTOFF_z[ityp];
-
-            // rcbox_x = (rc/(pSPARC->delta_x - TEMP_TOL))*pSPARC->delta_x;
-            // rcbox_y = (rc/(pSPARC->delta_y - TEMP_TOL))*pSPARC->delta_y;
-            // rcbox_z = (rc/(pSPARC->delta_z - TEMP_TOL))*pSPARC->delta_z;
-
-
-
             rcbox_x = ceil(rc/a1_tilde) * norm_a1;
             rcbox_y = ceil(rc/a2_tilde) * norm_a2;
             rcbox_z = ceil(rc/a3_tilde) * norm_a3;
@@ -556,7 +545,7 @@ void CalculateAtomicOrbitals(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
                 l = (pSPARC->AO_rad_str).Rnl[ityp][n_ao].l;
 
                 SplineInterpUniform((pSPARC->AO_rad_str).r_grid[ityp], (pSPARC->AO_rad_str).Rnl[ityp][n_ao].values, (pSPARC->AO_rad_str).Rnl[ityp][n_ao].num_count, 
-						                    rc_pos_r, AO_sort, ndc, (pSPARC->AO_rad_str).SplineFitAO[ityp]+lcount*psd_len);
+                                            rc_pos_r, AO_sort, ndc, (pSPARC->AO_rad_str).SplineFitAO[ityp]+lcount*psd_len);
                 for (int m = -l; m <= l; m++) {
                     RealSphericalHarmonic(ndc, rc_pos_x, rc_pos_y, rc_pos_z, rc_pos_r, l, m, Ylm);
                     
@@ -726,7 +715,7 @@ void CalculateAtomicOrbitals_kpt(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
             for (n_ao = 0; n_ao < (pSPARC->AO_rad_str).num_orbitals[ityp]; n_ao++) {
                 l = (pSPARC->AO_rad_str).Rnl[ityp][n_ao].l;
                 SplineInterpUniform((pSPARC->AO_rad_str).r_grid[ityp], (pSPARC->AO_rad_str).Rnl[ityp][n_ao].values, (pSPARC->AO_rad_str).Rnl[ityp][n_ao].num_count, 
-						                    rc_pos_r, AO_sort, ndc, (pSPARC->AO_rad_str).SplineFitAO[ityp]+lcount*psd_len);
+                                            rc_pos_r, AO_sort, ndc, (pSPARC->AO_rad_str).SplineFitAO[ityp]+lcount*psd_len);
                                             
                 for (int m = -l; m <= l; m++) {
                     RealSphericalHarmonic(ndc, rc_pos_x, rc_pos_y, rc_pos_z, rc_pos_r, l, m, Ylm);
@@ -881,34 +870,19 @@ void Calculate_Overlap_AO(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
                     ndc_common = (xe-xs+1)*(ye-ys+1)*(ze-zs+1);
                     ndc_idx_common1 = (int *)malloc(sizeof(int)*ndc_common);
                     ndc_idx_common2 = (int *)malloc(sizeof(int)*ndc_common);
-                    // t1 = MPI_Wtime();
                     get_common_idx(Atom_Influence_AO[e1].grid_pos[i], Atom_Influence_AO[e2].grid_pos[j], ndc1, ndc2, &ndc_common, ndc_idx_common1, ndc_idx_common2);
-                    // min_ndc = min(ndc1, ndc2);
                     if (ndc_common ==0){
                         continue;
                     }
-                    // t2 = MPI_Wtime();
-                    // if (rank == 0) printf("Time for get_common_idx: %.3f ms (%d, %d, %d)\n", (t2-t1)*1e3, ndc1, ndc2, ndc_common);
                     t1 = MPI_Wtime();
                     for (int ao1 = 0; ao1 < n_orbital1; ao1++){
-                        // phi_local1 = (double *)malloc(sizeof(double)*ndc1);
-                        // fill phi_local1
                         phi_local1 = &(AO_str[e1].Phi[i][ao1*ndc1]);
-                    
                         for (int ao2 = 0; ao2 < n_orbital2; ao2++){                            
                             phi_local2 = &(AO_str[e2].Phi[j][ao2*ndc2]);
                             for (int ndc_idx = 0; ndc_idx < ndc_common; ndc_idx++){
                                 OIJ_local_images[e1][i][ao1][e2][j][ao2] += pSPARC->dV * phi_local1[ndc_idx_common1[ndc_idx]]*phi_local2[ndc_idx_common2[ndc_idx]];
                             }
-                            // for (int ndc_idx= 0; ndc_idx < min_ndc; ndc_idx++){
-                            //     OIJ_local_images[e1][i][ao1][e2][j][ao2] += (idx1[ndc_idx]==idx2[ndc_idx])*pSPARC->dV * phi_local1[ndc_idx]*phi_local2[ndc_idx];
-                            // }
-                            // for (int ndc_idx = 0; ndc_idx < ndc_common; ndc_idx++){
-                            //     OIJ_local_images[e1][i][ao1][e2][j][ao2] += pSPARC->dV * phi_local1[ndc_idx_common1[ndc_idx]]*phi_local2[ndc_idx_common2[ndc_idx]];
-                            // } 
                         }
-                        t2 = MPI_Wtime();
-                        // if (rank == 0) printf("Time for OIJ_local_images loop: %.3f ms\n", (t2-t1)*1e3);
                     }
                     free(ndc_idx_common1);
                     free(ndc_idx_common2);
@@ -1016,9 +990,9 @@ void Calculate_Overlap_AO(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
                             int l = (pSPARC->AO_rad_str).Rnl[e1][n_ao].l;
                             n_orbital2 += 2 * l + 1;
                         }
-                        for (int i1 = 0; i1 < pSPARC->nAtomv[e]; i1++){
+                        for (int i1 = 0; i1 < pSPARC->nAtomv[e1]; i1++){
                             for (int j1 = 0; j1 < n_orbital2; j1++){
-                                MPI_Allreduce(MPI_IN_PLACE, &OIJ[count1][j][count2][j1], 1, MPI_DOUBLE, MPI_SUM, comm);
+                                MPI_Allreduce(MPI_IN_PLACE, &OIJ[i+count1][j][i1+count2][j1], 1, MPI_DOUBLE, MPI_SUM, comm);
                             }
                         }
                         count2 += pSPARC->nAtomv[e1];
@@ -1077,7 +1051,7 @@ void Calculate_Overlap_AO(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
                         }
                         for (int i1 = 0; i1 < pSPARC->nAtomv[e1]; i1++){
                             for (int j1 = 0; j1 < n_orbital2; j1++){
-                                Oij_mat[count3] = OIJ[count1][j][count2][j1];
+                                Oij_mat[count3] = OIJ[count1+i][j][count2+i1][j1];
                                 count3++;
                             }
                         }
@@ -1129,6 +1103,37 @@ void Calculate_Overlap_AO(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
         free(OIJ_local_images[e1]);
     }
     free(OIJ_local_images);
+
+    count1 = 0, count2 = 0;
+    for (int e = 0; e < pSPARC->Ntypes; e++){
+        int n_orbital1 = 0;
+        int n_AO1 = (pSPARC->AO_rad_str).num_orbitals[e];
+        for (int n_ao = 0; n_ao < n_AO1; n_ao++) {
+            int l = (pSPARC->AO_rad_str).Rnl[e][n_ao].l;
+            n_orbital1 += 2 * l + 1;
+        }
+        for (int i = 0; i < pSPARC->nAtomv[e]; i++){
+            for (int j = 0; j < n_orbital1; j++){
+                count2 = 0;
+                for (int e1 = 0; e1 < pSPARC->Ntypes; e1++){
+                    int n_orbital2 = 0;
+                    int n_AO2 = (pSPARC->AO_rad_str).num_orbitals[e1];
+                    for (int n_ao = 0; n_ao < n_AO2; n_ao++) {
+                        int l = (pSPARC->AO_rad_str).Rnl[e1][n_ao].l;
+                        n_orbital2 += 2 * l + 1;
+                    }
+                    for (int i1 = 0; i1 < pSPARC->nAtomv[e1]; i1++){
+                        free(OIJ[i+count1][j][i1+count2]);
+                    }   
+                    count2 += pSPARC->nAtomv[e1];
+                }
+                free(OIJ[i+count1][j]);
+            }   
+            free(OIJ[i+count1]);
+        }
+        count1 += pSPARC->nAtomv[e];
+    }
+    free(OIJ);
 
 }
 
@@ -1407,9 +1412,9 @@ void Calculate_Overlap_AO_kpt(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
                             int l = (pSPARC->AO_rad_str).Rnl[e1][n_ao].l;
                             n_orbital2 += 2 * l + 1;
                         }
-                        for (int i1 = 0; i1 < pSPARC->nAtomv[e]; i1++){
+                        for (int i1 = 0; i1 < pSPARC->nAtomv[e1]; i1++){
                             for (int j1 = 0; j1 < n_orbital2; j1++){
-                                MPI_Allreduce(MPI_IN_PLACE, &OIJ[count1][j][count2][j1], 1, MPI_C_DOUBLE_COMPLEX, MPI_SUM, comm);
+                                MPI_Allreduce(MPI_IN_PLACE, &OIJ[i+count1][j][i1+count2][j1], 1, MPI_C_DOUBLE_COMPLEX, MPI_SUM, comm);
                             }
                         }
                         count2 += pSPARC->nAtomv[e1];
@@ -1532,486 +1537,68 @@ void Calculate_Overlap_AO_kpt(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
         free(OIJ_local_images[e1]);
     }
     free(OIJ_local_images);
-}
-
-// void Calculate_Overlap_AO_kpt(SPARC_OBJ *pSPARC, AO_OBJ *AO_str, 
-//         ATOM_NLOC_INFLUENCE_OBJ *Atom_Influence_AO, int kpt, double _Complex ******OIJ_local_images, int *DMVertices, MPI_Comm comm){
-//     // processors that are not in the dmcomm will continue
-//     if (comm == MPI_COMM_NULL) {
-//         return; // upon input, make sure process with bandcomm_index < 0 provides MPI_COMM_NULL
-//     }
-//     int rank;
-//     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-//     double t1, t2, t_tot, t_old;
-
-//     t_tot = t_old = 0.0;
-// #ifdef DEBUG
-//     if (rank == 0) printf("Calculate nonlocal projectors ... \n");
-// #endif    
-//     int l, np, lcount, lcount2, m, psd_len, col_count, indx, ityp, iat, ipos, ndc, lloc, lmax, DMnx, DMny;
-//     int i_DM, j_DM, k_DM;
-//     double x0_i, y0_i, z0_i, *rc_pos_x, *rc_pos_y, *rc_pos_z, *rc_pos_r, *Ylm, *AO_sort, x2, y2, z2, x, y, z;
-    
-//     // number of nodes in the local distributed domain
-//     DMnx = DMVertices[1] - DMVertices[0] + 1;
-//     DMny = DMVertices[3] - DMVertices[2] + 1;
-
-//     double Lx = pSPARC->range_x;
-//     double Ly = pSPARC->range_y;
-//     double Lz = pSPARC->range_z;
-//     double k1 = pSPARC->k1_loc[kpt];
-//     double k2 = pSPARC->k2_loc[kpt];
-//     double k3 = pSPARC->k3_loc[kpt];
-
-//     double theta;
-//     double _Complex bloch_fac1, bloch_fac2;
-
-//     double *Intgwt = NULL;
-//     double y0, z0, xi, yi, zi, ty, tz;
-//     double xin = pSPARC->xin + DMVertices[0] * pSPARC->delta_x;
-//     if (pSPARC->CyclixFlag) {
-//         if(comm == pSPARC->kptcomm_topo){
-//             Intgwt = pSPARC->Intgwt_kpttopo;
-//         } else{
-//             Intgwt = pSPARC->Intgwt_psi;
-//         }
-//     }
-
-//     // double _Complex ******OIJ_local_images;
-//     OIJ_local_images = (double _Complex ******) malloc(sizeof(double _Complex*****)*pSPARC->Ntypes);
-//     for (int e1 = 0; e1 < pSPARC->Ntypes; e1++){
-//         OIJ_local_images[e1] = (double _Complex *****) malloc(sizeof(double _Complex****)*Atom_Influence_AO[e1].n_atom);
-//         int n_orbital1 = 0;
-//         int n_AO1 = (pSPARC->AO_rad_str).num_orbitals[e1];
-//         for (int n_ao = 0; n_ao < n_AO1; n_ao++) {
-//             int l = (pSPARC->AO_rad_str).Rnl[e1][n_ao].l;
-//             n_orbital1 += 2 * l + 1;
-//         }
-//         for (int i = 0; i < Atom_Influence_AO[e1].n_atom; i++){
-            
-
-//             OIJ_local_images[e1][i] = (double _Complex ****) malloc(sizeof(double _Complex***)*n_orbital1);
-//             for (int ao1 = 0; ao1 < n_orbital1; ao1++){
-//                 OIJ_local_images[e1][i][ao1] = (double _Complex ***) malloc(sizeof(double _Complex**)*pSPARC->Ntypes);
-//                 for (int e2 = 0; e2 < pSPARC->Ntypes; e2++){
-//                     OIJ_local_images[e1][i][ao1][e2] = (double _Complex **) malloc(sizeof(double _Complex*)*Atom_Influence_AO[e2].n_atom);
-//                     int n_orbital2 = 0;
-//                     int n_AO2 = (pSPARC->AO_rad_str).num_orbitals[e2];
-//                     for (int n_ao = 0; n_ao < n_AO2; n_ao++) {
-//                         int l = (pSPARC->AO_rad_str).Rnl[e2][n_ao].l;
-//                         n_orbital2 += 2 * l + 1;
-//                     }
-//                     for (int j = 0; j < Atom_Influence_AO[e2].n_atom; j++){
-//                         OIJ_local_images[e1][i][ao1][e2][j] = (double _Complex *) calloc(n_orbital2, sizeof(double _Complex));
-//                     }
-//                 }
-//             }
-//         }
-//     }
-
-
-//     int ndc_common;
-
-//     int *ndc_idx_common1, *ndc_idx_common2;
-
-//     double _Complex *phi_local1, *phi_local2;
-//     for (int e1 = 0; e1 < pSPARC->Ntypes; e1++){
-//         int n_orbital1 = 0;
-//         int n_AO1 = (pSPARC->AO_rad_str).num_orbitals[e1];
-//         for (int n_ao = 0; n_ao < n_AO1; n_ao++) {
-//             int l = (pSPARC->AO_rad_str).Rnl[e1][n_ao].l;
-//             n_orbital1 += 2 * l + 1;
-//         }
-//         for (int i = 0; i < Atom_Influence_AO[e1].n_atom; i++){
-
-//             x0_i = Atom_Influence_AO[e1].coords[i*3  ];
-//             y0_i = Atom_Influence_AO[e1].coords[i*3+1];
-//             z0_i = Atom_Influence_AO[e1].coords[i*3+2];
-
-//             theta = -k1 * (floor(x0_i/Lx) * Lx) - k2 * (floor(y0_i/Ly) * Ly) - k3 * (floor(z0_i/Lz) * Lz);
-//             bloch_fac1 = cos(theta) + sin(theta) * I;
-
-            
-//             int xs1 = Atom_Influence_AO[e1].xs[i];
-//             int ys1 = Atom_Influence_AO[e1].ys[i];
-//             int zs1 = Atom_Influence_AO[e1].zs[i];
-
-//             int xe1 = Atom_Influence_AO[e1].xe[i];
-//             int ye1 = Atom_Influence_AO[e1].ye[i];
-//             int ze1 = Atom_Influence_AO[e1].ze[i];
-//             for (int ao1 = 0; ao1 < n_orbital1; ao1++){
-                
-//                 int ndc1 = Atom_Influence_AO[e1].ndc[i];
-//                 // phi_local1 = (double *)malloc(sizeof(double)*ndc1);
-//                 // fill phi_local1
-//                 phi_local1 = &(AO_str[e1].Phi_c[i][ao1*ndc1]);
 
 
 
-//                 for (int e2 = 0; e2 < pSPARC->Ntypes; e2++){
-//                     int n_orbital2 = 0;
-//                     int n_AO2 = (pSPARC->AO_rad_str).num_orbitals[e2];
-//                     for (int n_ao = 0; n_ao < n_AO2; n_ao++) {
-//                         int l = (pSPARC->AO_rad_str).Rnl[e2][n_ao].l;
-//                         n_orbital2 += 2 * l + 1;
-//                     }
-//                     for (int j = 0; j < Atom_Influence_AO[e2].n_atom; j++){
-//                         int xs2 = Atom_Influence_AO[e2].xs[j];
-//                         int ys2 = Atom_Influence_AO[e2].ys[j];
-//                         int zs2 = Atom_Influence_AO[e2].zs[j];
-
-//                         int xe2 = Atom_Influence_AO[e2].xe[j];
-//                         int ye2 = Atom_Influence_AO[e2].ye[j];
-//                         int ze2 = Atom_Influence_AO[e2].ze[j];
-
-//                         x0_i = Atom_Influence_AO[e2].coords[j*3  ];
-//                         y0_i = Atom_Influence_AO[e2].coords[j*3+1];
-//                         z0_i = Atom_Influence_AO[e2].coords[j*3+2];
-
-//                         theta = -k1 * (floor(x0_i/Lx) * Lx) - k2 * (floor(y0_i/Ly) * Ly) - k3 * (floor(z0_i/Lz) * Lz);
-//                         bloch_fac2 = cos(theta) - sin(theta) * I;
-
-//                         int xs, ys, zs, xe, ye, ze;
-//                         xs = max(xs1, xs2);
-//                         ys = max(ys1, ys2);
-//                         zs = max(zs1, zs2);
-//                         xe = min(xe1, xe2);
-//                         ye = min(ye1, ye2);
-//                         ze = min(ze1, ze2);
-
-
-                        
-//                         if ((xs>=xe)||(ys>=ye)||(zs>=ze)){
-//                             // This case is when there is no overlap
-//                             continue;
-//                         } 
-
-//                         int ndc2 = Atom_Influence_AO[e2].ndc[j];
-//                         ndc_common = (xe-xs+1)*(ye-ys+1)*(ze-zs+1);
-//                         ndc_idx_common1 = (int *)malloc(sizeof(int)*ndc_common);
-//                         ndc_idx_common2 = (int *)malloc(sizeof(int)*ndc_common);
-
-//                         get_common_idx(Atom_Influence_AO[e1].grid_pos[i], Atom_Influence_AO[e2].grid_pos[j], ndc1, ndc2, &ndc_common, ndc_idx_common1, ndc_idx_common2);
-//                         if (ndc_common ==0){
-//                             continue;
-//                         }
-
-
-//                         for (int ao2 = 0; ao2 < n_orbital2; ao2++){
-                            
-//                             // phi_local2 = (double *)malloc(sizeof(double)*ndc2);
-//                             phi_local2 = &(AO_str[e2].Phi_c[j][ao2*ndc2]);
-//                             for (int ndc_idx = 0; ndc_idx < ndc_common; ndc_idx++){
-//                                 OIJ_local_images[e1][i][ao1][e2][j][ao2] += pSPARC->dV * bloch_fac1 * bloch_fac2 * phi_local1[ndc_idx_common1[ndc_idx]] * phi_local2[ndc_idx_common2[ndc_idx]];
-//                             }
-//                         }
-//                         free(ndc_idx_common1);
-//                         free(ndc_idx_common2);
-//                     }
-
-//                 }
-//             }
-//             if (rank==0) printf("i: %d/%d\n",i, Atom_Influence_AO[e1].n_atom);
-//         }
-//     }
-
-    
-//     double _Complex ****OIJ;
-//     OIJ = (double _Complex ****) malloc(sizeof(double _Complex***)*pSPARC->n_atom);
-//     int count1 = 0, count2 = 0;
-//     for (int e = 0; e < pSPARC->Ntypes; e++){
-//         int n_orbital1 = 0;
-//         int n_AO1 = (pSPARC->AO_rad_str).num_orbitals[e];
-//         for (int n_ao = 0; n_ao < n_AO1; n_ao++) {
-//             int l = (pSPARC->AO_rad_str).Rnl[e][n_ao].l;
-//             n_orbital1 += 2 * l + 1;
-//         }
-//         for (int i = 0; i < pSPARC->nAtomv[e]; i++){
-//             OIJ[count1] = (double _Complex ***) malloc(sizeof(double _Complex**)*n_orbital1);
-//             for (int j = 0; j < n_orbital1; j++){
-//                 OIJ[count1][j] = (double _Complex **) malloc(sizeof(double _Complex*)*pSPARC->n_atom);
-//                 count2 = 0;
-//                 for (int e1 = 0; e1 < pSPARC->Ntypes; e1++){
-//                     int n_orbital2 = 0;
-//                     int n_AO2 = (pSPARC->AO_rad_str).num_orbitals[e1];
-//                     for (int n_ao = 0; n_ao < n_AO2; n_ao++) {
-//                         int l = (pSPARC->AO_rad_str).Rnl[e1][n_ao].l;
-//                         n_orbital2 += 2 * l + 1;
-//                     }
-//                     for (int i1 = 0; i1 < pSPARC->nAtomv[e1]; i1++){
-//                         OIJ[count1][j][count2] = (double _Complex *) calloc(n_orbital2, sizeof(double _Complex));
-//                     }
-//                     count2 += pSPARC->nAtomv[e1];
-//                 }
-//             }   
-//             count1 += pSPARC->nAtomv[e];
-//         }
-//     }
-
-
-//     int count_natom_e1 = 0, count_natom_e2 = 0;
-//     for (int e1 = 0; e1 < pSPARC->Ntypes; e1++){
-//         int n_orbital1 = 0;
-//         int n_AO1 = (pSPARC->AO_rad_str).num_orbitals[e1];
-//         for (int n_ao = 0; n_ao < n_AO1; n_ao++) {
-//             int l = (pSPARC->AO_rad_str).Rnl[e1][n_ao].l;
-//             n_orbital1 += 2 * l + 1;
-//         }
-
-//         for (int i = 0; i < Atom_Influence_AO[e1].n_atom; i++){
-//             int idx1 = Atom_Influence_AO[e1].atom_index[i];
-//             int na1 = idx1;
-//             for (int ao1 = 0; ao1 < n_orbital1; ao1++){
-//                 count_natom_e2 = 0;
-//                 for (int e2 = 0; e2 < pSPARC->Ntypes; e2++){
-//                     int n_orbital2 = 0;
-//                     int n_AO2 = (pSPARC->AO_rad_str).num_orbitals[e2];
-//                     for (int n_ao = 0; n_ao < n_AO2; n_ao++) {
-//                         int l = (pSPARC->AO_rad_str).Rnl[e2][n_ao].l;
-//                         n_orbital2 += 2 * l + 1;
-//                     }
-
-//                     for (int j = 0; j < Atom_Influence_AO[e2].n_atom; j++){
-//                         int idx2 = Atom_Influence_AO[e2].atom_index[j];
-//                         int na2 = idx2;
-//                         for (int ao2 = 0; ao2 < n_orbital2; ao2++){
-//                             // printf("na1: %d, ao1: %d, na2: %d, ao2: %d, e1: %d, i: %d/%d, e2: %d, j: %d/%d\n",
-//                             //  na1, ao1, na2, ao2, e1, i, Atom_Influence_AO[e1].n_atom, e2, j, Atom_Influence_AO[e2].n_atom);
-//                             OIJ[na1][ao1][na2][ao2] += OIJ_local_images[e1][i][ao1][e2][j][ao2];
-
-                            
-//                         }
-//                         // printf("e1: %d, i: %d/%d, ao1: %d, e2: %d, j: %d/%d\n", e1, i, Atom_Influence_AO[e1].n_atom, ao1, e2, j, Atom_Influence_AO[e2].n_atom);
-//                     }
-//                     count_natom_e2 += pSPARC->nAtomv[e2];
-//                 }
-//             }
-
-//         }
-//         count_natom_e1 += pSPARC->nAtomv[e1];
-//     }
-
-//     exit(5);
-
-//     int commsize;
-//     MPI_Comm_size(comm, &commsize);
-
-//     if (commsize > 1) {
-//         int count1 = 0, count2 = 0;
-//         for (int e = 0; e < pSPARC->Ntypes; e++){
-//             int n_orbital1 = 0;
-//             int n_AO1 = (pSPARC->AO_rad_str).num_orbitals[e];
-//             for (int n_ao = 0; n_ao < n_AO1; n_ao++) {
-//                 int l = (pSPARC->AO_rad_str).Rnl[e][n_ao].l;
-//                 n_orbital1 += 2 * l + 1;
-//             }
-//             for (int i = 0; i < pSPARC->nAtomv[e]; i++){
-//                 for (int j = 0; j < n_orbital1; j++){
-//                     count2 = 0;
-//                     for (int e1 = 0; e1 < pSPARC->Ntypes; e1++){
-//                         int n_orbital2 = 0;
-//                         int n_AO2 = (pSPARC->AO_rad_str).num_orbitals[e1];
-//                         for (int n_ao = 0; n_ao < n_AO2; n_ao++) {
-//                             int l = (pSPARC->AO_rad_str).Rnl[e1][n_ao].l;
-//                             n_orbital2 += 2 * l + 1;
-//                         }
-//                         for (int i1 = 0; i1 < pSPARC->nAtomv[e1]; i1++){
-//                             for (int j1 = 0; j1 < n_orbital2; j1++){
-//                                 MPI_Allreduce(MPI_IN_PLACE, &OIJ[count1][j][count2][j1], 1, MPI_C_DOUBLE_COMPLEX, MPI_SUM, comm);
-//                             }
-//                         }
-//                         count2 += pSPARC->nAtomv[e1];
-//                     }
-//                 }   
-//             }
-//             count1 += pSPARC->nAtomv[e];
-//         }
-//     }
-
-//     int rank_comm, count3;
-//     MPI_Comm_rank(comm, &rank_comm);
-//     char fname[] = "Overlap_integrals";
-//     char result[100];
-
-//     int tot_orb = 0;
-//     for (int e = 0; e < pSPARC->Ntypes; e++){
-//         int n_orbital1 = 0;
-//         int n_AO1 = (pSPARC->AO_rad_str).num_orbitals[e];
-//         for (int n_ao = 0; n_ao < n_AO1; n_ao++) {
-//             int l = (pSPARC->AO_rad_str).Rnl[e][n_ao].l;
-//             n_orbital1 += 2 * l + 1;
-//         }
-//         tot_orb +=  n_orbital1 * pSPARC->nAtomv[e];
-//     }
-
-//     double *Oij_mat ;
-
-//     FILE *fp;
-//     if (rank_comm==0){
-//         Oij_mat = (double *) malloc(sizeof(double) * tot_orb*tot_orb*2);
-//         snprintf(result, sizeof(result), "%s_kpt_%d.txt", fname, kpt);
-//         fp = fopen(result,"w");
-//         fprintf(fp, "kpt: %f %f %f\n", k1, k2, k3);
-
-//         count1 = 0, count2 = 0, count3=0;
-//         for (int e = 0; e < pSPARC->Ntypes; e++){
-//             int n_orbital1 = 0;
-//             int n_AO1 = (pSPARC->AO_rad_str).num_orbitals[e];
-//             for (int n_ao = 0; n_ao < n_AO1; n_ao++) {
-//                 int l = (pSPARC->AO_rad_str).Rnl[e][n_ao].l;
-//                 n_orbital1 += 2 * l + 1;
-//             }
-//             for (int i = 0; i < pSPARC->nAtomv[e]; i++){
-//                 for (int j = 0; j < n_orbital1; j++){
-//                     count2 = 0;
-//                     for (int e1 = 0; e1 < pSPARC->Ntypes; e1++){
-//                         int n_orbital2 = 0;
-//                         int n_AO2 = (pSPARC->AO_rad_str).num_orbitals[e1];
-//                         for (int n_ao = 0; n_ao < n_AO2; n_ao++) {
-//                             int l = (pSPARC->AO_rad_str).Rnl[e1][n_ao].l;
-//                             n_orbital2 += 2 * l + 1;
-//                         }
-//                         for (int i1 = 0; i1 < pSPARC->nAtomv[e1]; i1++){
-//                             for (int j1 = 0; j1 < n_orbital2; j1++){
-//                                 // fprintf(fp, "%d %d %d %d %.15E %.15E\n", count1, j, count2, j1, creal(OIJ[count1][j][count2][j1]), cimag(OIJ[count1][j][count2][j1]));
-//                                 Oij_mat[count3] = creal(OIJ[count1][j][count2][j1]);
-//                                 Oij_mat[count3+tot_orb*tot_orb] = cimag(OIJ[count1][j][count2][j1]);
-//                                 count3++;
-//                             }
-//                         }
-//                         count2 += pSPARC->nAtomv[e1];
-//                     }
-//                 }   
-//             }
-//             count1 += pSPARC->nAtomv[e];
-//         }
-
-//         count3 = 0;
-//         for (int i = 0; i < tot_orb; i++){
-//             for (int j = 0; j < tot_orb; j++){
-//                 fprintf(fp, "%.6E ", Oij_mat[count3]);
-//                 count3++;
-//             }
-//             fprintf(fp,"\n");
-//         }
-//         fprintf(fp,"\n");
-
-//         count3 = 0;
-//         for (int i = 0; i < tot_orb; i++){
-//             for (int j = 0; j < tot_orb; j++){
-//                 fprintf(fp, "%.6E ", Oij_mat[count3+tot_orb*tot_orb]);
-//                 count3++;
-//             }
-//             fprintf(fp,"\n");
-//         }
-
-//         fclose(fp);
-//         free(Oij_mat);
-//     }
-
-
-
-//     for (int e1 = 0; e1 < pSPARC->Ntypes; e1++){
-//         int n_orbital1 = 0;
-//         int n_AO1 = (pSPARC->AO_rad_str).num_orbitals[e1];
-//         for (int n_ao = 0; n_ao < n_AO1; n_ao++) {
-//             int l = (pSPARC->AO_rad_str).Rnl[e1][n_ao].l;
-//             n_orbital1 += 2 * l + 1;
-//         }
-//         for (int i = 0; i < Atom_Influence_AO[e1].n_atom; i++){
-//             for (int ao1 = 0; ao1 < n_orbital1; ao1++){
-//                 for (int e2 = 0; e2 < pSPARC->Ntypes; e2++){
-//                     int n_orbital2 = 0;
-//                     int n_AO2 = (pSPARC->AO_rad_str).num_orbitals[e2];
-//                     for (int n_ao = 0; n_ao < n_AO2; n_ao++) {
-//                         int l = (pSPARC->AO_rad_str).Rnl[e2][n_ao].l;
-//                         n_orbital2 += 2 * l + 1;
-//                     }
-//                     for (int j = 0; j < Atom_Influence_AO[e2].n_atom; j++){
-//                         free(OIJ_local_images[e1][i][ao1][e2][j]);
-//                     }
-//                     free(OIJ_local_images[e1][i][ao1][e2]);
-//                 }
-//                 free(OIJ_local_images[e1][i][ao1]);
-//             }
-//             free(OIJ_local_images[e1][i]);
-//         }
-//         free(OIJ_local_images[e1]);
-//     }
-//     free(OIJ_local_images);
-
-// }
-
-
-// Hash function
-int hash_function(int key) {
-    return (key % HASH_SIZE + HASH_SIZE) % HASH_SIZE;  // Handle negative keys
-}
-
-// Insert into hash table
-void hash_insert(HashNode **hash_table, int key, int index) {
-    int hash_index = hash_function(key);
-    HashNode *new_node = (HashNode *)malloc(sizeof(HashNode));
-    new_node->key = key;
-    new_node->index = index;
-    new_node->next = hash_table[hash_index];
-    hash_table[hash_index] = new_node;
-}
-
-// Search in hash table
-bool hash_search(HashNode **hash_table, int key, int *index) {
-    int hash_index = hash_function(key);
-    HashNode *current = hash_table[hash_index];
-    while (current) {
-        if (current->key == key) {
-            *index = current->index;
-            return true;
+    count1 = 0, count2 = 0;
+    for (int e = 0; e < pSPARC->Ntypes; e++){
+        int n_orbital1 = 0;
+        int n_AO1 = (pSPARC->AO_rad_str).num_orbitals[e];
+        for (int n_ao = 0; n_ao < n_AO1; n_ao++) {
+            int l = (pSPARC->AO_rad_str).Rnl[e][n_ao].l;
+            n_orbital1 += 2 * l + 1;
         }
-        current = current->next;
-    }
-    return false;
-}
-
-// Free hash table
-void free_hash_table(HashNode **hash_table) {
-    for (int i = 0; i < HASH_SIZE; i++) {
-        HashNode *current = hash_table[i];
-        while (current) {
-            HashNode *temp = current;
-            current = current->next;
-            free(temp);
+        for (int i = 0; i < pSPARC->nAtomv[e]; i++){
+            for (int j = 0; j < n_orbital1; j++){
+                count2 = 0;
+                for (int e1 = 0; e1 < pSPARC->Ntypes; e1++){
+                    int n_orbital2 = 0;
+                    int n_AO2 = (pSPARC->AO_rad_str).num_orbitals[e1];
+                    for (int n_ao = 0; n_ao < n_AO2; n_ao++) {
+                        int l = (pSPARC->AO_rad_str).Rnl[e1][n_ao].l;
+                        n_orbital2 += 2 * l + 1;
+                    }
+                    for (int i1 = 0; i1 < pSPARC->nAtomv[e1]; i1++){
+                        free(OIJ[i+count1][j][i1+count2]);
+                    }   
+                    count2 += pSPARC->nAtomv[e1];
+                }
+                free(OIJ[i+count1][j]);
+            }   
+            free(OIJ[i+count1]);
         }
+        count1 += pSPARC->nAtomv[e];
     }
+    free(OIJ);
+
+
 }
 
-// Optimized function to find common indices
+
 void get_common_idx(int *x, int *y, int nx, int ny, int *n_common, int *nx_common, int *ny_common) {
-    // Initialize hash table
-    HashNode *hash_table[HASH_SIZE] = {NULL};
-    int common_count = 0;
+    int i = 0;    // Index for array x
+    int j = 0;    // Index for array y
+    int count = 0;  // Counter for common elements
 
-    // Insert elements of array y into the hash table
-    for (int j = 0; j < ny; j++) {
-        hash_insert(hash_table, y[j], j);
-    }
-
-    // Find common elements using the hash table
-    for (int i = 0; i < nx; i++) {
-        int index_in_y;
-        if (hash_search(hash_table, x[i], &index_in_y)) {
-            nx_common[common_count] = i;
-            ny_common[common_count] = index_in_y;
-            common_count++;
+    // Compare elements using two pointers since arrays are sorted
+    while (i < nx && j < ny) {
+        int xi = x[i];
+        int yj = y[j];
+        if (xi < yj) {
+            i++;
+        } else if (xi > yj) {
+            j++;
+        } else {  // Found a common element
+            nx_common[count] = i;
+            ny_common[count] = j;
+            count++;
+            i++;
+            j++;
         }
     }
-
-    // Store the number of common elements
-    *n_common = common_count;
-
-    // Free the hash table
-    free_hash_table(hash_table);
+    *n_common = count;
 }
+
 
 
 
@@ -2056,64 +1643,85 @@ void CalculateAOInnerProductIndex(SPARC_OBJ *pSPARC)
  */
 void AO_psi_mult(const SPARC_OBJ *pSPARC, int DMnd, ATOM_NLOC_INFLUENCE_OBJ *Atom_Influence_AO, 
                   AO_OBJ *AO_str, int ncol, double *x, int ldi, double *Hx, int i_spin, int ldo, MPI_Comm comm)
-{
+{   
+    int rank_comm;
+    // processors that are not in the dmcomm will continue
+    if (comm == MPI_COMM_NULL) {
+        // return; // upon input, make sure process with bandcomm_index < 0 provides MPI_COMM_NULL
+        rank_comm = -1;
+    } else {
+        MPI_Comm_rank(comm, &rank_comm);
+    }
+
+
     int i, n, np, count;
     /* compute nonlocal operator times vector(s) */
     int ityp, iat, l, m, ldispl, lmax, ndc, atom_index;
     double *alpha, *x_rc, *Vnlx;
     alpha = (double *)calloc( (pSPARC->AO_rad_str).IP_displ[pSPARC->n_atom] * ncol, sizeof(double));
     //first find inner product
-    for (ityp = 0; ityp < pSPARC->Ntypes; ityp++) {
 
-        int n_orbital1 = 0;
-        int n_AO1 = (pSPARC->AO_rad_str).num_orbitals[ityp];
-        for (int n_ao = 0; n_ao < n_AO1; n_ao++) {
-            int l = (pSPARC->AO_rad_str).Rnl[ityp][n_ao].l;
-            n_orbital1 += 2 * l + 1;
-        }
+    if (comm != MPI_COMM_NULL){
+        for (ityp = 0; ityp < pSPARC->Ntypes; ityp++) {
+            int n_orbital1 = 0;
+            int n_AO1 = (pSPARC->AO_rad_str).num_orbitals[ityp];
+            for (int n_ao = 0; n_ao < n_AO1; n_ao++) {
+                int l = (pSPARC->AO_rad_str).Rnl[ityp][n_ao].l;
+                n_orbital1 += 2 * l + 1;
+            }
 
-        if (! n_orbital1) continue; // this is typical for hydrogen
-        for (iat = 0; iat < Atom_Influence_AO[ityp].n_atom; iat++) {
-            ndc = Atom_Influence_AO[ityp].ndc[iat]; 
-            x_rc = (double *)malloc( ndc * ncol * sizeof(double));
-            atom_index = Atom_Influence_AO[ityp].atom_index[iat];
-            for (n = 0; n < ncol; n++) {
-                for (i = 0; i < ndc; i++) {
-                    x_rc[n*ndc+i] = x[n*ldi + Atom_Influence_AO[ityp].grid_pos[iat][i]];
+            if (! n_orbital1) continue; // this is typical for hydrogen
+            for (iat = 0; iat < Atom_Influence_AO[ityp].n_atom; iat++) {
+                ndc = Atom_Influence_AO[ityp].ndc[iat]; 
+                x_rc = (double *)malloc( ndc * ncol * sizeof(double));
+                atom_index = Atom_Influence_AO[ityp].atom_index[iat];
+                for (n = 0; n < ncol; n++) {
+                    for (i = 0; i < ndc; i++) {
+                        x_rc[n*ndc+i] = x[n*ldi + Atom_Influence_AO[ityp].grid_pos[iat][i]];
+                    }
                 }
+                if (pSPARC->CyclixFlag) {
+                    // cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, nlocProj[ityp].nproj, ncol, ndc, 
+                    //     1.0, nlocProj[ityp].Chi_cyclix[iat], ndc, x_rc, ndc, 1.0, 
+                    //     alpha+pSPARC->IP_displ[atom_index]*ncol, nlocProj[ityp].nproj);
+                } else {
+                    cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, n_orbital1, ncol, ndc, 
+                        sqrt(pSPARC->dV), AO_str[ityp].Phi[iat], ndc, x_rc, ndc, 1.0, 
+                        alpha+(pSPARC->AO_rad_str).IP_displ[atom_index]*ncol, n_orbital1);          
+                }
+                free(x_rc);
             }
-            if (pSPARC->CyclixFlag) {
-                // cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, nlocProj[ityp].nproj, ncol, ndc, 
-                //     1.0, nlocProj[ityp].Chi_cyclix[iat], ndc, x_rc, ndc, 1.0, 
-                //     alpha+pSPARC->IP_displ[atom_index]*ncol, nlocProj[ityp].nproj);
-            } else {
-                cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, n_orbital1, ncol, ndc, 
-                    pSPARC->dV, AO_str[ityp].Phi[iat], ndc, x_rc, ndc, 1.0, 
-                    alpha+(pSPARC->AO_rad_str).IP_displ[atom_index]*ncol, n_orbital1);          
-            }
-            free(x_rc);
         }
     }
+    
+
+
 
 
     // if there are domain parallelization over each band, we need to sum over all processes over domain comm
     int commsize;
-    MPI_Comm_size(comm, &commsize);
-    if (commsize > 1) {
-        MPI_Allreduce(MPI_IN_PLACE, alpha, (pSPARC->AO_rad_str).IP_displ[pSPARC->n_atom] * ncol, MPI_DOUBLE, MPI_SUM, comm);
-    }
+     if (comm != MPI_COMM_NULL){
+        MPI_Comm_size(comm, &commsize);
+        if (commsize > 1) {
+            MPI_Allreduce(MPI_IN_PLACE, alpha, (pSPARC->AO_rad_str).IP_displ[pSPARC->n_atom] * ncol, MPI_DOUBLE, MPI_SUM, comm);
+        }
+     }
+    
+
 
     FILE *fp;
-    int rank_comm, count3;
-    MPI_Comm_rank(comm, &rank_comm);
-    char fname[] = "Projections_gamma";
+    // int rank_comm;
+    int count3;
+   
+    char fname[] = "Projections";
     char result[1000];
 
 
     int *recv_counts = NULL;
     int *displs = NULL;
     double *gathered_alpha;
-    int rank, rank1, size;
+    int rank, size;
+    int rank1;
     int number  = rank_comm;
     int root = 0;
     
@@ -2124,10 +1732,20 @@ void AO_psi_mult(const SPARC_OBJ *pSPARC, int DMnd, ATOM_NLOC_INFLUENCE_OBJ *Ato
     MPI_Comm_rank(pSPARC->kptcomm, &rank);
     MPI_Comm_size(pSPARC->kptcomm, &size);
 
+    // printf("rank: %d, size: %d\n", rank, size);
+    // return;
 
+    int color = (number == 0) ? 1 : MPI_UNDEFINED;
     MPI_Comm new_comm;
-    MPI_Comm_split(pSPARC->kptcomm, number == 0, rank, &new_comm);
-    MPI_Comm_rank(new_comm, &rank1);
+    MPI_Comm_split(pSPARC->kptcomm, color, rank, &new_comm);
+    
+
+    int size_newcomm;
+    if (number==0){
+        MPI_Comm_rank(new_comm, &rank1);
+    }
+    
+    
 
     if (number == 0) {
         if (rank1 == root) {
@@ -2169,10 +1787,16 @@ void AO_psi_mult(const SPARC_OBJ *pSPARC, int DMnd, ATOM_NLOC_INFLUENCE_OBJ *Ato
             fprintf(fp, "\n");
         }
         fclose(fp);
-
         free(gathered_alpha);
     }
-    MPI_Comm_free(&new_comm);
+
+    if (number == 0){
+        MPI_Comm_free(&new_comm);
+    }
+    
+
+    free(alpha);
+
 
 }
 
@@ -2182,7 +1806,16 @@ void AO_psi_mult(const SPARC_OBJ *pSPARC, int DMnd, ATOM_NLOC_INFLUENCE_OBJ *Ato
  */
 void AO_psi_mult_kpt(const SPARC_OBJ *pSPARC, int DMnd, ATOM_NLOC_INFLUENCE_OBJ *Atom_Influence_AO, 
                       AO_OBJ *AO_str, int ncol, double _Complex *x, int ldi, double _Complex *Hx, int i_spin, int ldo, int kpt, MPI_Comm comm)
-{
+{   
+    int rank_comm;
+    // processors that are not in the dmcomm will continue
+    if (comm == MPI_COMM_NULL) {
+        // return; // upon input, make sure process with bandcomm_index < 0 provides MPI_COMM_NULL
+        rank_comm = -1;
+    } else {
+        MPI_Comm_rank(comm, &rank_comm);
+    }
+
     int i, n, np, count;
     /* compute nonlocal operator times vector(s) */
     int ityp, iat, l, m, ldispl, lmax, ndc, atom_index;
@@ -2200,49 +1833,55 @@ void AO_psi_mult_kpt(const SPARC_OBJ *pSPARC, int DMnd, ATOM_NLOC_INFLUENCE_OBJ 
 
     FILE *fpx;
     //first find inner product
-    for (ityp = 0; ityp < pSPARC->Ntypes; ityp++) {
-        if (! AO_str[ityp].n_orbitals) continue; // this is typical for hydrogen
-        for (iat = 0; iat < Atom_Influence_AO[ityp].n_atom; iat++) {
-            x0_i = Atom_Influence_AO[ityp].coords[iat*3  ];
-            y0_i = Atom_Influence_AO[ityp].coords[iat*3+1];
-            z0_i = Atom_Influence_AO[ityp].coords[iat*3+2];
-            theta = -k1 * (floor(x0_i/Lx) * Lx) - k2 * (floor(y0_i/Ly) * Ly) - k3 * (floor(z0_i/Lz) * Lz);
-            bloch_fac = cos(theta) + sin(theta) * I;
-            if (pSPARC->CyclixFlag) {
-                a = bloch_fac;
-            } else {
-                a = bloch_fac * pSPARC->dV;
-            }
-            b = 1.0;
-            ndc = Atom_Influence_AO[ityp].ndc[iat]; 
-            x_rc = (double _Complex *)malloc( ndc * ncol * sizeof(double _Complex));
-            atom_index = Atom_Influence_AO[ityp].atom_index[iat];
-            for (n = 0; n < ncol; n++) {
-                for (i = 0; i < ndc; i++) {
-                    x_rc[n*ndc+i] = x[n*ldi + Atom_Influence_AO[ityp].grid_pos[iat][i]];
+    if (comm != MPI_COMM_NULL){
+        for (ityp = 0; ityp < pSPARC->Ntypes; ityp++) {
+            if (! AO_str[ityp].n_orbitals) continue; // this is typical for hydrogen
+            for (iat = 0; iat < Atom_Influence_AO[ityp].n_atom; iat++) {
+                x0_i = Atom_Influence_AO[ityp].coords[iat*3  ];
+                y0_i = Atom_Influence_AO[ityp].coords[iat*3+1];
+                z0_i = Atom_Influence_AO[ityp].coords[iat*3+2];
+                theta = -k1 * (floor(x0_i/Lx) * Lx) - k2 * (floor(y0_i/Ly) * Ly) - k3 * (floor(z0_i/Lz) * Lz);
+                bloch_fac = cos(theta) + sin(theta) * I;
+                if (pSPARC->CyclixFlag) {
+                    a = bloch_fac;
+                } else {
+                    a = bloch_fac * pSPARC->dV;
                 }
+                b = 1.0;
+                ndc = Atom_Influence_AO[ityp].ndc[iat]; 
+                x_rc = (double _Complex *)malloc( ndc * ncol * sizeof(double _Complex));
+                atom_index = Atom_Influence_AO[ityp].atom_index[iat];
+                for (n = 0; n < ncol; n++) {
+                    for (i = 0; i < ndc; i++) {
+                        x_rc[n*ndc+i] = x[n*ldi + Atom_Influence_AO[ityp].grid_pos[iat][i]];
+                    }
+                }
+                if (pSPARC->CyclixFlag) {
+                    // cblas_zgemm(CblasColMajor, CblasTrans, CblasNoTrans, nlocProj[ityp].nproj, ncol, ndc, 
+                    //     &a, nlocProj[ityp].Chi_c_cyclix[iat], ndc, x_rc, ndc, &b, 
+                    //     alpha+pSPARC->IP_displ[atom_index]*ncol, nlocProj[ityp].nproj);
+                    // Do nothing
+                } else {
+                    cblas_zgemm(CblasColMajor, CblasTrans, CblasNoTrans, AO_str[ityp].n_orbitals, ncol, ndc, 
+                        &a, AO_str[ityp].Phi_c[iat], ndc, x_rc, ndc, &b, 
+                        alpha+(pSPARC->AO_rad_str).IP_displ[atom_index]*ncol, AO_str[ityp].n_orbitals);
+                }
+                free(x_rc);
             }
-            if (pSPARC->CyclixFlag) {
-                // cblas_zgemm(CblasColMajor, CblasTrans, CblasNoTrans, nlocProj[ityp].nproj, ncol, ndc, 
-                //     &a, nlocProj[ityp].Chi_c_cyclix[iat], ndc, x_rc, ndc, &b, 
-                //     alpha+pSPARC->IP_displ[atom_index]*ncol, nlocProj[ityp].nproj);
-                // Do nothing
-            } else {
-                cblas_zgemm(CblasColMajor, CblasTrans, CblasNoTrans, AO_str[ityp].n_orbitals, ncol, ndc, 
-                    &a, AO_str[ityp].Phi_c[iat], ndc, x_rc, ndc, &b, 
-                    alpha+(pSPARC->AO_rad_str).IP_displ[atom_index]*ncol, AO_str[ityp].n_orbitals);
-            }
-            free(x_rc);
         }
     }
+    
 
 
     // if there are domain parallelization over each band, we need to sum over all processes over domain comm
     int commsize;
-    MPI_Comm_size(comm, &commsize);
-    if (commsize > 1) {
-        MPI_Allreduce(MPI_IN_PLACE, alpha, (pSPARC->AO_rad_str).IP_displ[pSPARC->n_atom] * ncol, MPI_DOUBLE_COMPLEX, MPI_SUM, comm);
+    if (comm != MPI_COMM_NULL){
+        MPI_Comm_size(comm, &commsize);
+        if (commsize > 1) {
+            MPI_Allreduce(MPI_IN_PLACE, alpha, (pSPARC->AO_rad_str).IP_displ[pSPARC->n_atom] * ncol, MPI_DOUBLE_COMPLEX, MPI_SUM, comm);
+        }
     }
+    
 
         
 
@@ -2253,7 +1892,7 @@ void AO_psi_mult_kpt(const SPARC_OBJ *pSPARC, int DMnd, ATOM_NLOC_INFLUENCE_OBJ 
     // }
 
     FILE *fp;
-    int rank_comm, count3;
+    int count3;
     MPI_Comm_rank(comm, &rank_comm);
     char fname[] = "Projections";
     char result[1000];
@@ -2273,9 +1912,18 @@ void AO_psi_mult_kpt(const SPARC_OBJ *pSPARC, int DMnd, ATOM_NLOC_INFLUENCE_OBJ 
     MPI_Comm_size(pSPARC->kptcomm, &size);
 
 
+    // MPI_Comm new_comm;
+    // MPI_Comm_split(pSPARC->kptcomm, number == 0, rank, &new_comm);
+    // MPI_Comm_rank(new_comm, &rank1);
+
+
+    int color = (number == 0) ? 1 : MPI_UNDEFINED;
     MPI_Comm new_comm;
-    MPI_Comm_split(pSPARC->kptcomm, number == 0, rank, &new_comm);
-    MPI_Comm_rank(new_comm, &rank1);
+    MPI_Comm_split(pSPARC->kptcomm, color, rank, &new_comm);
+    
+    if (number==0){
+        MPI_Comm_rank(new_comm, &rank1);
+    }
 
     if (number == 0) {
         if (rank1 == root) {
@@ -2333,8 +1981,11 @@ void AO_psi_mult_kpt(const SPARC_OBJ *pSPARC, int DMnd, ATOM_NLOC_INFLUENCE_OBJ 
         fclose(fp);
         free(gathered_alpha);
     }
-
-    MPI_Comm_free(&new_comm);
+    if (number==0){
+        MPI_Comm_free(&new_comm);
+    }
+    
+    free(alpha);
 
 }
 
