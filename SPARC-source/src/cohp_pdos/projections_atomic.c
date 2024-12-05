@@ -1216,7 +1216,7 @@ void Calculate_Overlap_AO_kpt(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
     int *ndc_idx_common1;
     int *ndc_idx_common2;
     int ndc_common;
-
+    int *idx1, *idx2;
     
 
     // double t1, t2;
@@ -1294,9 +1294,9 @@ void Calculate_Overlap_AO_kpt(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
                     }
                     t1 = MPI_Wtime();
                     for (int ao1 = 0; ao1 < n_orbital1; ao1++){
-                        phi_local1 = &(AO_str[e1].Phi[i][ao1*ndc1]);
+                        phi_local1 = &(AO_str[e1].Phi_c[i][ao1*ndc1]);
                         for (int ao2 = 0; ao2 < n_orbital2; ao2++){                            
-                            phi_local2 = &(AO_str[e2].Phi[j][ao2*ndc2]);
+                            phi_local2 = &(AO_str[e2].Phi_c[j][ao2*ndc2]);
                             for (int ndc_idx = 0; ndc_idx < ndc_common; ndc_idx++){
                                 OIJ_local_images[e1][i][ao1][e2][j][ao2] += pSPARC->dV * bloch_fac1 * bloch_fac2 * phi_local1[ndc_idx_common1[ndc_idx]] * phi_local2[ndc_idx_common2[ndc_idx]];;
                             }
