@@ -1218,6 +1218,8 @@ void Calculate_Overlap_AO_kpt(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
     int ndc_common;
 
     
+
+    // double t1, t2;
     double _Complex *phi_local1, *phi_local2;
     for (int e1 = 0; e1 < pSPARC->Ntypes; e1++){
         int n_orbital1 = 0;
@@ -1235,6 +1237,8 @@ void Calculate_Overlap_AO_kpt(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
             bloch_fac1 = cos(theta) + sin(theta) * I;
 
 
+            int ndc1 = Atom_Influence_AO[e1].ndc[i];
+            idx1 = Atom_Influence_AO[e1].grid_pos[i];
             int xs1 = Atom_Influence_AO[e1].xs[i];
             int ys1 = Atom_Influence_AO[e1].ys[i];
             int zs1 = Atom_Influence_AO[e1].zs[i];
@@ -1242,76 +1246,64 @@ void Calculate_Overlap_AO_kpt(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
             int xe1 = Atom_Influence_AO[e1].xe[i];
             int ye1 = Atom_Influence_AO[e1].ye[i];
             int ze1 = Atom_Influence_AO[e1].ze[i];
-            for (int ao1 = 0; ao1 < n_orbital1; ao1++){
-                
-                int ndc1 = Atom_Influence_AO[e1].ndc[i];
-                // phi_local1 = (double *)malloc(sizeof(double)*ndc1);
-                // fill phi_local1
-                phi_local1 = &(AO_str[e1].Phi_c[i][ao1*ndc1]);
+            for (int e2 = 0; e2 < pSPARC->Ntypes; e2++){
+                int n_orbital2 = 0;
+                int n_AO2 = (pSPARC->AO_rad_str).num_orbitals[e2];
+                for (int n_ao = 0; n_ao < n_AO2; n_ao++) {
+                    int l = (pSPARC->AO_rad_str).Rnl[e2][n_ao].l;
+                    n_orbital2 += 2 * l + 1;
+                }
+                for (int j = 0; j < Atom_Influence_AO[e2].n_atom; j++){
+                    idx2 = Atom_Influence_AO[e2].grid_pos[j];
+                    int xs2 = Atom_Influence_AO[e2].xs[j];
+                    int ys2 = Atom_Influence_AO[e2].ys[j];
+                    int zs2 = Atom_Influence_AO[e2].zs[j];
+
+                    int xe2 = Atom_Influence_AO[e2].xe[j];
+                    int ye2 = Atom_Influence_AO[e2].ye[j];
+                    int ze2 = Atom_Influence_AO[e2].ze[j];
+
+                    x0_i = Atom_Influence_AO[e2].coords[j*3  ];
+                    y0_i = Atom_Influence_AO[e2].coords[j*3+1];
+                    z0_i = Atom_Influence_AO[e2].coords[j*3+2];
+
+                    theta = -k1 * (floor(x0_i/Lx) * Lx) - k2 * (floor(y0_i/Ly) * Ly) - k3 * (floor(z0_i/Lz) * Lz);
+                    bloch_fac2 = cos(theta) - sin(theta) * I;
 
 
+                    int xs, ys, zs, xe, ye, ze;
+                    xs = max(xs1, xs2);
+                    ys = max(ys1, ys2);
+                    zs = max(zs1, zs2);
+                    xe = min(xe1, xe2);
+                    ye = min(ye1, ye2);
+                    ze = min(ze1, ze2);
 
-                for (int e2 = 0; e2 < pSPARC->Ntypes; e2++){
-                    int n_orbital2 = 0;
-                    int n_AO2 = (pSPARC->AO_rad_str).num_orbitals[e2];
-                    for (int n_ao = 0; n_ao < n_AO2; n_ao++) {
-                        int l = (pSPARC->AO_rad_str).Rnl[e2][n_ao].l;
-                        n_orbital2 += 2 * l + 1;
+                    if ((xs>=xe)||(ys>=ye)||(zs>=ze)){
+                        // This case is when there is no overlap
+                        continue;
                     }
-                    for (int j = 0; j < Atom_Influence_AO[e2].n_atom; j++){
-                        int xs2 = Atom_Influence_AO[e2].xs[j];
-                        int ys2 = Atom_Influence_AO[e2].ys[j];
-                        int zs2 = Atom_Influence_AO[e2].zs[j];
+                    int ndc2 = Atom_Influence_AO[e2].ndc[j];
 
-                        int xe2 = Atom_Influence_AO[e2].xe[j];
-                        int ye2 = Atom_Influence_AO[e2].ye[j];
-                        int ze2 = Atom_Influence_AO[e2].ze[j];
-
-                        x0_i = Atom_Influence_AO[e2].coords[j*3  ];
-                        y0_i = Atom_Influence_AO[e2].coords[j*3+1];
-                        z0_i = Atom_Influence_AO[e2].coords[j*3+2];
-
-                        theta = -k1 * (floor(x0_i/Lx) * Lx) - k2 * (floor(y0_i/Ly) * Ly) - k3 * (floor(z0_i/Lz) * Lz);
-                        bloch_fac2 = cos(theta) - sin(theta) * I;
-
-
-                        int xs, ys, zs, xe, ye, ze;
-                        xs = max(xs1, xs2);
-                        ys = max(ys1, ys2);
-                        zs = max(zs1, zs2);
-                        xe = min(xe1, xe2);
-                        ye = min(ye1, ye2);
-                        ze = min(ze1, ze2);
-
-                        if ((xs>=xe)||(ys>=ye)||(zs>=ze)){
-                            // This case is when there is no overlap
-                            continue;
-                        }
-
-
-                        int ndc2 = Atom_Influence_AO[e2].ndc[j];
-
-                        ndc_common = (xe-xs+1)*(ye-ys+1)*(ze-zs+1);
-                        ndc_idx_common1 = (int *)malloc(sizeof(int)*ndc_common);
-                        ndc_idx_common2 = (int *)malloc(sizeof(int)*ndc_common);
-
-                        get_common_idx(Atom_Influence_AO[e1].grid_pos[i], Atom_Influence_AO[e2].grid_pos[j], ndc1, ndc2, &ndc_common, ndc_idx_common1, ndc_idx_common2);
-                        if (ndc_common ==0){
-                            continue;
-                        }
-
+                    ndc_common = (xe-xs+1)*(ye-ys+1)*(ze-zs+1);
+                    ndc_idx_common1 = (int *)malloc(sizeof(int)*ndc_common);
+                    ndc_idx_common2 = (int *)malloc(sizeof(int)*ndc_common);
+                    get_common_idx(Atom_Influence_AO[e1].grid_pos[i], Atom_Influence_AO[e2].grid_pos[j], ndc1, ndc2, &ndc_common, ndc_idx_common1, ndc_idx_common2);
+                    if (ndc_common ==0){
+                        continue;
+                    }
+                    t1 = MPI_Wtime();
+                    for (int ao1 = 0; ao1 < n_orbital1; ao1++){
+                        phi_local1 = &(AO_str[e1].Phi[i][ao1*ndc1]);
                         for (int ao2 = 0; ao2 < n_orbital2; ao2++){                            
-                            phi_local2 = &(AO_str[e2].Phi_c[j][ao2*ndc2]);
+                            phi_local2 = &(AO_str[e2].Phi[j][ao2*ndc2]);
                             for (int ndc_idx = 0; ndc_idx < ndc_common; ndc_idx++){
-                                OIJ_local_images[e1][i][ao1][e2][j][ao2] += pSPARC->dV * bloch_fac1 * bloch_fac2 * phi_local1[ndc_idx_common1[ndc_idx]] * phi_local2[ndc_idx_common2[ndc_idx]];
+                                OIJ_local_images[e1][i][ao1][e2][j][ao2] += pSPARC->dV * bloch_fac1 * bloch_fac2 * phi_local1[ndc_idx_common1[ndc_idx]] * phi_local2[ndc_idx_common2[ndc_idx]];;
                             }
-                             
                         }
-
-                        free(ndc_idx_common1);
-                        free(ndc_idx_common2);
                     }
-
+                    free(ndc_idx_common1);
+                    free(ndc_idx_common2);
                 }
             }
             if (rank==0) printf("i: %d/%d\n",i, Atom_Influence_AO[e1].n_atom);
@@ -1474,7 +1466,7 @@ void Calculate_Overlap_AO_kpt(SPARC_OBJ *pSPARC, AO_OBJ *AO_str,
                         }
                         for (int i1 = 0; i1 < pSPARC->nAtomv[e1]; i1++){
                             for (int j1 = 0; j1 < n_orbital2; j1++){
-                                Oij_mat[count3] = OIJ[count1][j][count2][j1];
+                                Oij_mat[count3] = OIJ[count1+i][j][count2+i1][j1];
                                 count3++;
                             }
                         }
